@@ -5,6 +5,8 @@ public protocol HTTPCodableRequest: HTTPRequest {
   /// The `Decodable` type expected from the response body.
   associatedtype ResponseType: Decodable
 
+  var body: Encodable? { get }
+  
   /// The `JSONDecoder` object used to decode the response model.
   var jsonDecoder: JSONDecoder { get }
 
@@ -13,6 +15,10 @@ public protocol HTTPCodableRequest: HTTPRequest {
 }
 
 public extension HTTPCodableRequest {
+  var body: Encodable? {
+    nil
+  }
+  
   var jsonDecoder: JSONDecoder {
     JSONDecoder()
   }

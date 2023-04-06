@@ -27,8 +27,13 @@ extension NetworkManager {
   /// - Parameter request: The `HTTPCodableRequest` to execute.
   /// - Returns: The decoded response model.
   public func execute<R: HTTPCodableRequest>(_ request: R) async throws -> R.ResponseType {
-    guard let urlRequest = request.urlRequest else {
+    guard var urlRequest = request.urlRequest else {
       throw NetworkingError.invalidURLRequest
+    }
+    
+    if let body = request.body {
+      let encodedBody = try request.jsonEncoder.encode(body)
+      urlRequest.httpBody = encodedBody
     }
 
     Logger.log(request: urlRequest)

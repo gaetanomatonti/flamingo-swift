@@ -2,7 +2,6 @@ import Foundation
 
 /// An object that handles mocked network exchanges.
 public final class MockURLProtocol: URLProtocol {
-
   /// An enumeration of the errors that can be thrown by the `URLProtocol`.
   enum Error: Swift.Error, LocalizedError {
     /// The `MockExchange` is missing.

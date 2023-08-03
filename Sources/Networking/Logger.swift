@@ -1,4 +1,5 @@
 import Foundation
+import OSLog
 
 /// An object that logs messages in the console.
 struct Logger {
@@ -12,8 +13,11 @@ struct Logger {
     guard Self.isLoggingEnabled else {
       return
     }
+    
+    let httpMethod = request.httpMethod ?? ""
+    let headers = request.allHTTPHeaderFields?.description ?? ""
 
-    print("⤴️" + " " + request.description)
+    print("⤴️" + " \(httpMethod) " + request.description + "\n" + headers)
   }
 
   static func log(data: Data, response: URLResponse) {

@@ -1,35 +1,38 @@
 import Foundation
 
 /// An object that manages network requests.
-final public class NetworkManager {
-
-  // MARK: - Stored Properties
-
-  /// The instance of the `URLSession` used to execute network requests.
+public struct NetworkManager {
+  /// The `URLSession` object used to execute the `URLRequest`s.
   let session: URLSession
-
-  // MARK: - Init
-
-  public init(configuration: ConfigurationProvider) {
-    session = configuration.session
-    Logger.isLoggingEnabled = configuration.isLoggingEnabled
-  }
-
-  public convenience init() {
-    self.init(configuration: DefaultConfiguration())
+  
+  /// The object that intercepts and processes the network requests.
+  let interceptor: Interceptor
+  
+  /// Creates an instance of `NetworkManager`.
+  /// - Parameters:
+  ///   - interceptor: The object that intercepts and processes the network requests. Defaults to an instance that returns the requests as they are.
+  ///   - session: The `URLSession` object used to execute the `URLRequest`s. Defaults to an ephemeral session.
+  ///   - isLoggingEnabled: Whether logging is enabled. Defaults to `true`.
+  public init(interceptor: Interceptor = .default, session: URLSession = .ephemeral, isLoggingEnabled: Bool = true) {
+    self.interceptor = interceptor
+    self.session = session
+    Logger.isLoggingEnabled = isLoggingEnabled
   }
 }
 
 // MARK: - Functions
 
 extension NetworkManager {
-  /// Executes an `HTTPCodableRequest`.
-  /// - Parameter request: The `HTTPCodableRequest` to execute.
+  /// Executes an `HTTPRequest`.
+  /// - Parameter request: The `HTTPRequest` to execute.
   /// - Returns: The decoded response model.
-  public func execute<R: HTTPCodableRequest>(_ request: R) async throws -> R.ResponseType {
-    guard var urlRequest = request.urlRequest else {
-      throw NetworkingError.invalidURLRequest
-    }
+  public func execute<Request>(_ request: Request) async throws -> Request.ResponseType where Request: HTTPRequest {
+    let requestMapper = RequestMapper(request: request)
+    
+    var urlRequest: URLRequest = try {
+      let request = try requestMapper.mapToURLRequest()
+      return interceptor.adapt(request)
+    }()
     
     if let body = request.body {
       let encodedBody = try request.jsonEncoder.encode(body)
@@ -39,12 +42,21 @@ extension NetworkManager {
     Logger.log(request: urlRequest)
 
     let (data, response) = try await session.data(for: urlRequest)
+    
+    guard let httpResponse = response as? HTTPURLResponse else {
+      throw NetworkingError.invalidURLResponse
+    }
+    
+    guard !interceptor.shouldRetry(urlRequest, httpResponse) else {
+      return try await execute(request)
+    }
 
     Logger.log(data: data, response: response)
-    try validate(response)
-
+    
     do {
-      return try request.jsonDecoder.decode(R.ResponseType.self, from: data)
+      try validate(httpResponse)
+
+      return try request.jsonDecoder.decode(Request.ResponseType.self, from: data)
     } catch {
       Logger.log(error)
       throw error
@@ -53,11 +65,7 @@ extension NetworkManager {
 
   /// Validates whether the request has succeeded, otherwise it throws an error.
   /// - Parameter response: The response to validate.
-  func validate(_ response: URLResponse) throws {
-    guard let response = response as? HTTPURLResponse else {
-      throw NetworkingError.invalidURLResponse
-    }
-
+  func validate(_ response: HTTPURLResponse) throws {
     let statusCode = response.statusCode
 
     switch statusCode {

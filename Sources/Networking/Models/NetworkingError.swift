@@ -7,6 +7,8 @@ enum NetworkingError: Error {
 
   /// The `URLResponse` is invalid.
   case invalidURLResponse
+  
+  case invalidEmptyResponse
 
   /// The request failed with a specific status code.
   case http(statusCode: Int)
@@ -20,6 +22,9 @@ extension NetworkingError: LocalizedError {
 
       case .invalidURLResponse:
         return "The URL response is invalid."
+      
+      case .invalidEmptyResponse:
+        return "Invalid empty response type."
 
       case let .http(statusCode):
         return "Request failed with status code \(statusCode)"

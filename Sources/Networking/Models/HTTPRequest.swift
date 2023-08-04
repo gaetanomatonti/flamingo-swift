@@ -3,7 +3,7 @@ import Foundation
 /// A protocol that defines requirements for an HTTP request.
 public protocol HTTPRequest {
   /// The `Decodable` type expected from the response body.
-  associatedtype ResponseType: Decodable
+  associatedtype ResponseModel: Decodable
 
   /// The host of the API `URL`.
   var host: String { get }

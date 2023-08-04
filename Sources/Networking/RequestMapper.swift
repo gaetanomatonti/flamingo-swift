@@ -1,17 +1,44 @@
 import Foundation
 
+/// An object that maps a `HTTPRequest` to `URLRequest`.
 public struct RequestMapper<Request> where Request: HTTPRequest {
-  enum Error: Swift.Error {
-    case invalidURL
-  }
+    
+  // MARK: - Stored Properties
   
+  /// The request to map.
   let request: Request
   
+  // MARK: - Init
+  
+  /// Create an instance of `RequestMapper`.
+  /// - Parameter request: The request to map.
   public init(request: Request) {
     self.request = request
   }
   
-  public func mapToURLRequest() throws -> URLRequest {
+  // MARK: - Functions
+  
+  /// Maps the `HTTPRequest` into `URLRequest`.
+  /// - Returns: The mapped `URLRequest`.
+  public func mapURLRequest() throws -> URLRequest {
+    let url = try mapURL()
+    
+    var urlRequest = URLRequest(url: url, timeoutInterval: request.timeout)
+    urlRequest.httpMethod = request.method.rawValue
+    request.defaultHeaders.forEach { urlRequest.setValue($0.value.description, forHTTPHeaderField: $0.key) }
+    request.customHeaders.forEach { urlRequest.setValue($0.value.description, forHTTPHeaderField: $0.key) }
+    
+    if let body = request.body {
+      let encodedBody = try request.jsonEncoder.encode(body)
+      urlRequest.httpBody = encodedBody
+    }
+
+    return urlRequest
+  }
+  
+  /// Creates the `URL` of the request.
+  /// - Returns: The `URL` of the request.
+  public func mapURL() throws -> URL {
     var urlComponents = URLComponents()
     urlComponents.scheme = "https"
     urlComponents.host = request.host
@@ -24,11 +51,14 @@ public struct RequestMapper<Request> where Request: HTTPRequest {
       throw Error.invalidURL
     }
 
-    var urlRequest = URLRequest(url: url, timeoutInterval: request.timeout)
-    urlRequest.httpMethod = request.method.rawValue
-    request.defaultHeaders.forEach { urlRequest.setValue($0.value, forHTTPHeaderField: $0.key) }
-    request.customHeaders.forEach { urlRequest.setValue($0.value, forHTTPHeaderField: $0.key) }
+    return url
+  }
+}
 
-    return urlRequest
+extension RequestMapper {
+  /// The errors that can be throws by the `RequestMapper`.
+  enum Error: Swift.Error {
+    /// The `URL` is invalid.
+    case invalidURL
   }
 }

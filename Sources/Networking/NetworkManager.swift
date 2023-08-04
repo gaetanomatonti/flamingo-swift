@@ -2,11 +2,16 @@ import Foundation
 
 /// An object that manages network requests.
 public struct NetworkManager {
+  
+  // MARK: - Stored Properties
+
   /// The `URLSession` object used to execute the `URLRequest`s.
   let session: URLSession
   
   /// The object that intercepts and processes the network requests.
   let interceptor: Interceptor
+  
+  // MARK: - Init
   
   /// Creates an instance of `NetworkManager`.
   /// - Parameters:
@@ -18,30 +23,23 @@ public struct NetworkManager {
     self.session = session
     Logger.isLoggingEnabled = isLoggingEnabled
   }
-}
-
-// MARK: - Functions
-
-extension NetworkManager {
+  
+  // MARK: - Functions
+  
   /// Executes an `HTTPRequest`.
   /// - Parameter request: The `HTTPRequest` to execute.
   /// - Returns: The decoded response model.
-  public func execute<Request>(_ request: Request) async throws -> Request.ResponseType where Request: HTTPRequest {
+  public func execute<Request>(_ request: Request) async throws -> Response<Request.ResponseModel> where Request: HTTPRequest {
     let requestMapper = RequestMapper(request: request)
     
-    var urlRequest: URLRequest = try {
-      let request = try requestMapper.mapToURLRequest()
+    let urlRequest: URLRequest = try {
+      let request = try requestMapper.mapURLRequest()
       return interceptor.adapt(request)
     }()
-    
-    if let body = request.body {
-      let encodedBody = try request.jsonEncoder.encode(body)
-      urlRequest.httpBody = encodedBody
-    }
 
     Logger.log(request: urlRequest)
 
-    let (data, response) = try await session.data(for: urlRequest)
+    let (responseData, response) = try await session.data(for: urlRequest)
     
     guard let httpResponse = response as? HTTPURLResponse else {
       throw NetworkingError.invalidURLResponse
@@ -51,29 +49,26 @@ extension NetworkManager {
       return try await execute(request)
     }
 
-    Logger.log(data: data, response: response)
-    
     do {
-      try validate(httpResponse)
+      let validator = ResponseValidator(request: request, response: httpResponse, body: responseData)
+      try validator.validate()
 
-      return try request.jsonDecoder.decode(Request.ResponseType.self, from: data)
+      Logger.log(data: responseData, response: response)
+      
+      if validator.hasEmptyResponse {
+        if let responseType = Request.ResponseModel.self as? EmptyResponse.Type, let responseModel = responseType.init() as? Request.ResponseModel {
+          return Response(request: urlRequest, statusCode: httpResponse.statusCode, model: responseModel)
+        } else {
+          throw NetworkingError.invalidEmptyResponse
+        }
+      }
+
+      let responseModel = try request.jsonDecoder.decode(Request.ResponseModel.self, from: responseData)
+      return Response(request: urlRequest, statusCode: httpResponse.statusCode, model: responseModel)
     } catch {
       Logger.log(error)
       throw error
     }
   }
-
-  /// Validates whether the request has succeeded, otherwise it throws an error.
-  /// - Parameter response: The response to validate.
-  func validate(_ response: HTTPURLResponse) throws {
-    let statusCode = response.statusCode
-
-    switch statusCode {
-      case (200...299):
-        break
-
-      default:
-        throw NetworkingError.http(statusCode: statusCode)
-    }
-  }
 }
+

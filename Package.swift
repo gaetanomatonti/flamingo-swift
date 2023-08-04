@@ -3,26 +3,26 @@
 import PackageDescription
 
 let package = Package(
-  name: "Networking",
+  name: "Flamingo",
   platforms: [
     .iOS(.v15),
     .macOS(.v13)
   ],
   products: [
     .library(
-      name: "Networking",
-      targets: ["Networking"]
+      name: "Flamingo",
+      targets: ["Flamingo"]
     ),
   ],
   targets: [
     .target(
-      name: "Networking",
+      name: "Flamingo",
       dependencies: []
     ),
     .testTarget(
-      name: "NetworkingTests",
+      name: "FlamingoTests",
       dependencies: [
-        .target(name: "Networking")
+        .target(name: "Flamingo")
       ]
     )
   ]

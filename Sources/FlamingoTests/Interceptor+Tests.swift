@@ -1,5 +1,5 @@
 import XCTest
-@testable import Networking
+@testable import Flamingo
 
 final class InterceptorTests: XCTestCase {
   
@@ -49,6 +49,6 @@ extension InterceptorTests {
     
     let path: [String] = []
     
-    let method: Networking.HTTPMethod = .get
+    let method: HTTPMethod = .get
   }
 }

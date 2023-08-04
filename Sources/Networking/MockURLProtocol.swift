@@ -3,25 +3,6 @@ import Foundation
 /// An object that handles mocked network exchanges.
 public final class MockURLProtocol: URLProtocol {
 
-  /// An enumeration of the errors that can be thrown by the `URLProtocol`.
-  enum Error: Swift.Error, LocalizedError {
-    /// The `MockExchange` is missing.
-    case missingExchange
-
-    /// The response of the exchange is missing.
-    case missingResponse
-
-    var errorDescription: String? {
-      switch self {
-        case .missingExchange:
-          return "The MockExchange object corresponding to the request is missing."
-
-        case .missingResponse:
-          return "The MockExchange object is missing a response."
-      }
-    }
-  }
-
   // MARK: - Stored Properties
 
   /// The set of requests to be mocked.
@@ -45,6 +26,10 @@ public final class MockURLProtocol: URLProtocol {
     true
   }
 
+  public override class func canInit(with task: URLSessionTask) -> Bool {
+    true
+  }
+  
   public override class func canonicalRequest(for request: URLRequest) -> URLRequest {
     request
   }
@@ -76,14 +61,38 @@ public final class MockURLProtocol: URLProtocol {
       return
     }
 
-    guard let urlResponse = mockExchange.urlResponse else {
+    guard let urlResponse = mockExchange.httpResponse else {
       client?.urlProtocol(self, didFailWithError: Error.missingResponse)
       return
     }
 
     client?.urlProtocol(self, didReceive: urlResponse, cacheStoragePolicy: .notAllowed)
-    client?.urlProtocol(self, didLoad: mockExchange.response.body)
+    
+    if let body = mockExchange.response.body {
+      client?.urlProtocol(self, didLoad: body)
+    }
   }
 
   public override func stopLoading() {}
+}
+
+extension MockURLProtocol {
+  /// An enumeration of the errors that can be thrown by the `URLProtocol`.
+  enum Error: Swift.Error, LocalizedError {
+    /// The `MockExchange` is missing.
+    case missingExchange
+
+    /// The response of the exchange is missing.
+    case missingResponse
+
+    var errorDescription: String? {
+      switch self {
+        case .missingExchange:
+          return "The MockExchange object corresponding to the request is missing."
+
+        case .missingResponse:
+          return "The MockExchange object is missing a response."
+      }
+    }
+  }
 }

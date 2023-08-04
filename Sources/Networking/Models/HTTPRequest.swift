@@ -1,7 +1,10 @@
 import Foundation
 
 /// A protocol that defines requirements for an HTTP request.
-public protocol HTTPRequest: URLRequestConvertible {
+public protocol HTTPRequest {
+  /// The `Decodable` type expected from the response body.
+  associatedtype ResponseModel: Decodable
+
   /// The host of the API `URL`.
   var host: String { get }
 
@@ -13,12 +16,21 @@ public protocol HTTPRequest: URLRequestConvertible {
 
   /// The query parameters to include in the request. Defaults to `nil`.
   var query: Parameters? { get }
-
+  
   /// The default headers added to all requests. Provides a default value for requests that accept json content.
   var defaultHeaders: HTTPHeaders { get }
 
   /// The custom header added to specific requests. Defaults to `[:]`.
   var customHeaders: HTTPHeaders { get }
+  
+  /// The body of the request.
+  var body: Encodable? { get }
+  
+  /// The `JSONDecoder` object used to decode the response model.
+  var jsonDecoder: JSONDecoder { get }
+
+  /// The `JSONEncoder` object used to encode the request model in the `body`.
+  var jsonEncoder: JSONEncoder { get }
 
   /// The desired time interval before a timeout error is returned.
   var timeout: TimeInterval { get }
@@ -39,29 +51,20 @@ public extension HTTPRequest {
   var customHeaders: HTTPHeaders {
     [:]
   }
+  
+  var body: Encodable? {
+    nil
+  }
+  
+  var jsonDecoder: JSONDecoder {
+    JSONDecoder()
+  }
+
+  var jsonEncoder: JSONEncoder {
+    JSONEncoder()
+  }
 
   var timeout: TimeInterval {
     30
-  }
-
-  var urlRequest: URLRequest? {
-    var urlComponents = URLComponents()
-    urlComponents.scheme = "https"
-    urlComponents.host = host
-    urlComponents.path = "/" + path.joined(separator: "/")
-    urlComponents.queryItems = query?.map { key, value in
-      URLQueryItem(name: key.description, value: value.description)
-    }
-
-    guard let url = urlComponents.url else {
-      return nil
-    }
-
-    var urlRequest = URLRequest(url: url, timeoutInterval: timeout)
-    urlRequest.httpMethod = method.rawValue
-    defaultHeaders.forEach { urlRequest.setValue($0.value, forHTTPHeaderField: $0.key) }
-    customHeaders.forEach { urlRequest.setValue($0.value, forHTTPHeaderField: $0.key) }
-
-    return urlRequest
   }
 }

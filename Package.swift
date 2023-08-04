@@ -1,12 +1,12 @@
-// swift-tools-version: 5.6
+// swift-tools-version: 5.8
 
 import PackageDescription
 
 let package = Package(
   name: "Networking",
   platforms: [
-    .iOS(.v13),
-    .macOS(.v12)
+    .iOS(.v15),
+    .macOS(.v13)
   ],
   products: [
     .library(
@@ -18,6 +18,12 @@ let package = Package(
     .target(
       name: "Networking",
       dependencies: []
+    ),
+    .testTarget(
+      name: "NetworkingTests",
+      dependencies: [
+        .target(name: "Networking")
+      ]
     )
   ]
 )

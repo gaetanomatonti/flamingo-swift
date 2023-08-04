@@ -12,16 +12,17 @@ struct Logger {
     guard Self.isLoggingEnabled else {
       return
     }
+    
+    let httpMethod = request.httpMethod ?? ""
+    let headers = request.allHTTPHeaderFields?.description ?? ""
 
-    print("⤴️" + " " + request.description)
+    print("⤴️" + " \(httpMethod) " + request.description + "\n" + headers)
   }
 
   static func log(data: Data, response: URLResponse) {
     guard Self.isLoggingEnabled else {
       return
     }
-
-    // Ideally `print` calls should be replaced by an actual log.
 
     if let response = response as? HTTPURLResponse {
       print("ℹ️" + " " + response.description)

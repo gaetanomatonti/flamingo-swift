@@ -1,71 +1,74 @@
 import Foundation
 
 /// An object that manages network requests.
-final public class NetworkManager {
-
+public struct NetworkManager {
+  
   // MARK: - Stored Properties
 
-  /// The instance of the `URLSession` used to execute network requests.
+  /// The `URLSession` object used to execute the `URLRequest`s.
   let session: URLSession
-
+  
+  /// The object that intercepts and processes the network requests.
+  let interceptor: Interceptor
+  
   // MARK: - Init
-
-  public init(configuration: ConfigurationProvider) {
-    session = configuration.session
-    Logger.isLoggingEnabled = configuration.isLoggingEnabled
+  
+  /// Creates an instance of `NetworkManager`.
+  /// - Parameters:
+  ///   - interceptor: The object that intercepts and processes the network requests. Defaults to an instance that returns the requests as they are.
+  ///   - session: The `URLSession` object used to execute the `URLRequest`s. Defaults to an ephemeral session.
+  ///   - isLoggingEnabled: Whether logging is enabled. Defaults to `true`.
+  public init(interceptor: Interceptor = .default, session: URLSession = .ephemeral, isLoggingEnabled: Bool = true) {
+    self.interceptor = interceptor
+    self.session = session
+    Logger.isLoggingEnabled = isLoggingEnabled
   }
-
-  public convenience init() {
-    self.init(configuration: DefaultConfiguration())
-  }
-}
-
-// MARK: - Functions
-
-extension NetworkManager {
-  /// Executes an `HTTPCodableRequest`.
-  /// - Parameter request: The `HTTPCodableRequest` to execute.
+  
+  // MARK: - Functions
+  
+  /// Executes an `HTTPRequest`.
+  /// - Parameter request: The `HTTPRequest` to execute.
   /// - Returns: The decoded response model.
-  public func execute<R: HTTPCodableRequest>(_ request: R) async throws -> R.ResponseType {
-    guard var urlRequest = request.urlRequest else {
-      throw NetworkingError.invalidURLRequest
-    }
+  public func execute<Request>(_ request: Request) async throws -> Response<Request.ResponseModel> where Request: HTTPRequest {
+    let requestMapper = RequestMapper(request: request)
     
-    if let body = request.body {
-      let encodedBody = try request.jsonEncoder.encode(body)
-      urlRequest.httpBody = encodedBody
-    }
+    let urlRequest: URLRequest = try {
+      let request = try requestMapper.mapURLRequest()
+      return interceptor.adapt(request)
+    }()
 
     Logger.log(request: urlRequest)
 
-    let (data, response) = try await session.data(for: urlRequest)
-
-    Logger.log(data: data, response: response)
-    try validate(response)
+    let (responseData, response) = try await session.data(for: urlRequest)
+    
+    guard let httpResponse = response as? HTTPURLResponse else {
+      throw NetworkingError.invalidURLResponse
+    }
+    
+    guard !interceptor.shouldRetry(urlRequest, httpResponse) else {
+      return try await execute(request)
+    }
 
     do {
-      return try request.jsonDecoder.decode(R.ResponseType.self, from: data)
+      let validator = ResponseValidator(request: request, response: httpResponse, body: responseData)
+      try validator.validate()
+
+      Logger.log(data: responseData, response: response)
+      
+      if validator.hasEmptyResponse {
+        if let responseType = Request.ResponseModel.self as? EmptyResponse.Type, let responseModel = responseType.init() as? Request.ResponseModel {
+          return Response(request: urlRequest, statusCode: httpResponse.statusCode, model: responseModel)
+        } else {
+          throw NetworkingError.invalidEmptyResponse
+        }
+      }
+
+      let responseModel = try request.jsonDecoder.decode(Request.ResponseModel.self, from: responseData)
+      return Response(request: urlRequest, statusCode: httpResponse.statusCode, model: responseModel)
     } catch {
       Logger.log(error)
       throw error
     }
   }
-
-  /// Validates whether the request has succeeded, otherwise it throws an error.
-  /// - Parameter response: The response to validate.
-  func validate(_ response: URLResponse) throws {
-    guard let response = response as? HTTPURLResponse else {
-      throw NetworkingError.invalidURLResponse
-    }
-
-    let statusCode = response.statusCode
-
-    switch statusCode {
-      case (200...299):
-        break
-
-      default:
-        throw NetworkingError.http(statusCode: statusCode)
-    }
-  }
 }
+

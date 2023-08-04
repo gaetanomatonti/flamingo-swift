@@ -9,7 +9,7 @@ public struct MockResponse {
   public let statusCode: Int
 
   /// The expected body of the response. Defaults to an empty `Data` object.
-  public let body: Data
+  public let body: Data?
 
   /// The error expected from the request.
   public let error: Error?
@@ -17,7 +17,7 @@ public struct MockResponse {
 
   // MARK: - Init
 
-  public init(statusCode: Int = 200, body: Data = Data(), error: Error? = nil) {
+  public init(statusCode: Int = 200, body: Data? = nil, error: Error? = nil) {
     self.statusCode = statusCode
     self.body = body
     self.error = error

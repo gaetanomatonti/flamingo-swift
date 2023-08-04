@@ -1,5 +1,4 @@
 import Foundation
-import OSLog
 
 /// An object that logs messages in the console.
 struct Logger {
@@ -24,8 +23,6 @@ struct Logger {
     guard Self.isLoggingEnabled else {
       return
     }
-
-    // Ideally `print` calls should be replaced by an actual log.
 
     if let response = response as? HTTPURLResponse {
       print("ℹ️" + " " + response.description)

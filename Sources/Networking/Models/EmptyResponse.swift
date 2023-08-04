@@ -1,3 +1,4 @@
 import Foundation
 
-public struct EmptyResponse: Codable {}
+/// An object that represents and empty response.
+public struct EmptyResponse: Decodable {}

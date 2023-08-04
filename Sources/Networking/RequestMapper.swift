@@ -1,7 +1,7 @@
 import Foundation
 
 /// An object that maps a `HTTPRequest` to `URLRequest`.
-public struct RequestMapper<Request> where Request: HTTPRequest {
+struct RequestMapper<Request> where Request: HTTPRequest {
     
   // MARK: - Stored Properties
   
@@ -12,7 +12,7 @@ public struct RequestMapper<Request> where Request: HTTPRequest {
   
   /// Create an instance of `RequestMapper`.
   /// - Parameter request: The request to map.
-  public init(request: Request) {
+  init(request: Request) {
     self.request = request
   }
   
@@ -20,7 +20,7 @@ public struct RequestMapper<Request> where Request: HTTPRequest {
   
   /// Maps the `HTTPRequest` into `URLRequest`.
   /// - Returns: The mapped `URLRequest`.
-  public func mapURLRequest() throws -> URLRequest {
+  func mapURLRequest() throws -> URLRequest {
     let url = try mapURL()
     
     var urlRequest = URLRequest(url: url, timeoutInterval: request.timeout)
@@ -38,7 +38,7 @@ public struct RequestMapper<Request> where Request: HTTPRequest {
   
   /// Creates the `URL` of the request.
   /// - Returns: The `URL` of the request.
-  public func mapURL() throws -> URL {
+  func mapURL() throws -> URL {
     var urlComponents = URLComponents()
     urlComponents.scheme = "https"
     urlComponents.host = request.host

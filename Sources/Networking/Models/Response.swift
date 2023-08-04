@@ -2,6 +2,9 @@ import Foundation
 
 // An object that represents the response of a network request.
 public struct Response<Model> {
+  
+  // MARK: - Stored Properties
+
   /// The parent request of the response.
   public let request: URLRequest
 

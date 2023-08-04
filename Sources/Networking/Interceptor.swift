@@ -2,12 +2,17 @@ import Foundation
 
 /// An object that intercepts and processes network requests.
 public struct Interceptor {
+  
+  // MARK: - Stored Properties
+
   /// Adapts a `URLRequest`.
   let adapt: (URLRequest) -> URLRequest
   
   /// Whether a `URLRequest` should be retried.
   let shouldRetry: (URLRequest, HTTPURLResponse) -> Bool
-  
+
+  // MARK: - Init
+
   /// Creates an instance for an `Adapter`.
   /// - Parameters:
   ///   - adapt: Adapts a `URLRequest`.

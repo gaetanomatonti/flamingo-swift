@@ -70,7 +70,8 @@ struct ResponseValidator<Request> where Request: HTTPRequest {
       return
     }
     
-    let isValidJSON = JSONSerialization.isValidJSONObject(body)
+    let jsonObject = try JSONSerialization.jsonObject(with: body)
+    let isValidJSON = JSONSerialization.isValidJSONObject(jsonObject)
     
     if isValidJSON == false {
       throw Error.invalidJSON
